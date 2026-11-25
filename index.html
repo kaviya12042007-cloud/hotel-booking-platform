@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StayNest - Hotel Booking</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif}
+body{background:#0f0f1a;color:#fff;padding:20px}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+header h1{font-size:26px} header h1 span{color:#22d3ee}
+.search-box{background:#1c1c2e;padding:20px;border-radius:16px;margin:20px 0;display:flex;gap:12px;flex-wrap:wrap}
+.search-box div{flex:1;min-width:150px}
+.search-box label{font-size:13px;color:#aaa;display:block;margin-bottom:5px}
+.search-box input,.search-box select{width:100%;padding:11px;border-radius:10px;border:none;background:#2a2a44;color:#fff;outline:none}
+.search-box button{background:#22d3ee;color:#000;font-weight:bold;border:none;padding:12px 25px;border-radius:10px;cursor:pointer}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.filters button{background:#1c1c2e;color:#fff;border:1px solid #333;padding:8px 16px;border-radius:20px;cursor:pointer}
+.filters button.active{background:#22d3ee;color:#000}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.card{background:#1c1c2e;border-radius:16px;overflow:hidden}
+.card img{width:100%;height:190px;object-fit:cover}
+.card-body{padding:16px}
+.badge{display:inline-block;background:#2a2a44;padding:5px 10px;border-radius:20px;font-size:12px;margin:3px 3px 0 0}
+.price{font-size:22px;font-weight:bold;color:#22d3ee;margin:10px 0 4px}
+.price s{color:#888;font-size:14px}
+.book-btn{width:100%;background:#22d3ee;color:#000;border:none;padding:12px;border-radius:10px;font-weight:bold;cursor:pointer;margin-top:10px}
+.book-btn:disabled{background:#444;color:#aaa;cursor:not-allowed}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);justify-content:center;align-items:center;z-index:100;padding:15px}
+.modal-content{background:#1c1c2e;padding:25px;border-radius:16px;width:100%;max-width:420px}
+.modal-content h2{margin-bottom:12px}
+.modal-content p{color:#ccc;margin:6px 0;font-size:14px}
+.modal-content input,.modal-content select{width:100%;padding:11px;margin:8px 0;border-radius:10px;border:none;background:#2a2a44;color:#fff}
+.confirm-btn{width:100%;background:#22c55e;color:#fff;border:none;padding:12px;border-radius:10px;font-weight:bold;cursor:pointer;margin-top:10px}
+.close-btn{width:100%;background:#333;color:#fff;border:none;padding:10px;border-radius:10px;cursor:pointer;margin-top:8px}
+.success{color:#22c55e;font-weight:bold;text-align:center}
+</style>
+</head>
+<body>
+
+<header><h1>🏨 Stay<span>Nest</span></h1><p>Hi, Kaviya B 👋</p></header>
+
+<div class="search-box">
+  <div><label>Destination</label><input id="destination" placeholder="e.g. Ooty, Goa, Chennai"></div>
+  <div><label>Check-in</label><input type="date" id="checkin"></div>
+  <div><label>Check-out</label><input type="date" id="checkout"></div>
+  <div><label>Guests</label><select id="guests"><option>1 Guest</option><option>2 Guests</option><option>3 Guests</option><option>4+ Guests</option></select></div>
+  <div><label>&nbsp;</label><button onclick="searchHotels()">🔍 Search</button></div>
+</div>
+<p id="resultText" style="margin-bottom:12px;color:#aaa"></p>
+
+<div class="filters">
+  <button class="active" onclick="filterHotels('all',this)">All</button>
+  <button onclick="filterHotels('budget',this)">Under ₹3000</button>
+  <button onclick="filterHotels('luxury',this)">Luxury</button>
+  <button onclick="filterHotels('beach',this)">Beach</button>
+  <button onclick="filterHotels('hill',this)">Hill Station</button>
+</div>
+
+<div class="grid" id="hotelGrid"></div>
+
+<div class="modal" id="bookingModal">
+  <div class="modal-content">
+    <h2 id="modalHotel">Hotel Name</h2>
+    <p id="modalDetails"></p>
+    <label style="font-size:13px;color:#aaa">Your Name</label>
+    <input id="guestName" placeholder="Enter your name">
+    <label style="font-size:13px;color:#aaa">Room Type</label>
+    <select id="roomType" onchange="updatePrice()">
+      <option value="1">Standard Room - Base Price</option>
+      <option value="1.5">Deluxe Room - +50%</option>
+      <option value="2">Suite - 2x Price</option>
+    </select>
+    <p><b>Nights:</b> <span id="nights">1</span> | <b>Guests:</b> <span id="modalGuests">2</span></p>
+    <p style="font-size:18px"><b>Total Price: <span id="totalPrice" style="color:#22d3ee">₹0</span></b></p>
+    <p id="availability" style="color:#22c55e">✅ Rooms Available - Confirm to Book</p>
+    <button class="confirm-btn" onclick="confirmBooking()">Confirm Booking ✅</button>
+    <button class="close-btn" onclick="closeModal()">Cancel</button>
+    <p id="successMsg" class="success"></p>
+  </div>
+</div>
+
+<script>
+const hotels=[
+ {name:"Sea View Resort, Goa",loc:"Goa",type:"beach",price:4500,old:6000,img:"https://picsum.photos/400/250?1",amenities:["🏖️ Beach","📶 WiFi","🍽️ Breakfast","🏊 Pool"],available:3},
+ {name:"Hill Paradise, Ooty",loc:"Ooty",type:"hill",price:2800,old:3500,img:"https://picsum.photos/400/250?2",amenities:["🏔️ View","📶 WiFi","🔥 Heater","🍽️ Breakfast"],available:5},
+ {name:"City Luxe, Chennai",loc:"Chennai",type:"luxury",price:5200,old:7000,img:"https://picsum.photos/400/250?3",amenities:["🏊 Pool","💪 Gym","📶 WiFi","🚗 Parking"],available:2},
+ {name:"Lake Side Stay, Kodaikanal",loc:"Kodaikanal",type:"hill",price:2200,old:3000,img:"https://picsum.photos/400/250?4",amenities:["🚣 Boating","📶 WiFi","🍽️ Breakfast"],available:4},
+ {name:"Royal Palace, Jaipur",loc:"Jaipur",type:"luxury",price:6800,old:9000,img:"https://picsum.photos/400/250?5",amenities:["👑 Royal","🏊 Pool","🍽️ Dinner","📶 WiFi"],available:1},
+ {name:"Budget Inn, Salem",loc:"Salem",type:"budget",price:1200,old:1800,img:"https://picsum.photos/400/250?6",amenities:["📶 WiFi","🚗 Parking","🍽️ Breakfast"],available:6},
+];
+let currentHotel=null, currentFilter='all';
+
+function render(list){
+ document.getElementById('hotelGrid').innerHTML=list.map((h,i)=>`
+  <div class="card">
+   <img src="${h.img}">
+   <div class="card-body">
+    <h3>${h.name}</h3><p style="color:#aaa;font-size:13px">📍 ${h.loc} • ${h.available} rooms left</p>
+    <div>${h.amenities.map(a=>`<span class="badge">${a}</span>`).join('')}</div>
+    <div class="price">₹${h.price} <s>₹${h.old}</s> <span style="font-size:13px;color:#aaa">/ night</span></div>
+    <button class="book-btn" ${h.available===0?'disabled':''} onclick="openModal(${hotels.indexOf(h)})">Book Now</button>
+   </div>
+  </div>`).join('');
+ if(list.length===0) document.getElementById('hotelGrid').innerHTML='<p>No hotels found. Try another destination.</p>';
+}
+render(hotels);
+
+function searchHotels(){
+ let dest=document.getElementById('destination').value.toLowerCase();
+ let filtered=hotels.filter(h=>h.loc.toLowerCase().includes(dest) || h.name.toLowerCase().includes(dest));
+ if(currentFilter!=='all'){
+   if(currentFilter==='budget') filtered=filtered.filter(h=>h.price<3000);
+   else filtered=filtered.filter(h=>h.type===currentFilter);
+ }
+ render(filtered);
+ document.getElementById('resultText').textContent=`Showing ${filtered.length} hotels ${dest?`for "${dest}"`:''}`;
+}
+function filterHotels(type,btn){
+ currentFilter=type;
+ document.querySelectorAll('.filters button').forEach(b=>b.classList.remove('active'));
+ btn.classList.add('active'); searchHotels();
+}
+function getNights(){
+ let ci=new Date(document.getElementById('checkin').value);
+ let co=new Date(document.getElementById('checkout').value);
+ if(!isNaN(ci) && !isNaN(co) && co>ci) return Math.ceil((co-ci)/(1000*60*60*24));
+ return 1;
+}
+function openModal(index){
+ currentHotel=hotels[index];
+ document.getElementById('modalHotel').textContent=currentHotel.name;
+ document.getElementById('modalGuests').textContent=document.getElementById('guests').value;
+ document.getElementById('nights').textContent=getNights();
+ document.getElementById('modalDetails').textContent=`${currentHotel.loc} • ${currentHotel.amenities.join(', ')}`;
+ document.getElementById('successMsg').textContent='';
+ updatePrice();
+ document.getElementById('bookingModal').style.display='flex';
+}
+function updatePrice(){
+ let nights=getNights();
+ let mult=parseFloat(document.getElementById('roomType').value);
+ let total=currentHotel.price * nights * mult;
+ document.getElementById('totalPrice').textContent='₹'+total.toLocaleString('en-IN');
+ document.getElementById('nights').textContent=nights;
+}
+function closeModal(){ document.getElementById('bookingModal').style.display='none'; }
+function confirmBooking(){
+ let name=document.getElementById('guestName').value || 'Guest';
+ document.getElementById('successMsg').textContent=`🎉 Booking Confirmed, ${name}! Check your email for details.`;
+ currentHotel.available--;
+ setTimeout(()=>{ closeModal(); render(hotels); },1500);
+}
+let today=new Date(); let tmr=new Date(); tmr.setDate(today.getDate()+1);
+document.getElementById('checkin').value=today.toISOString().split('T')[0];
+document.getElementById('checkout').value=tmr.toISOString().split('T')[0];
+</script>
+</body>
+</html>
